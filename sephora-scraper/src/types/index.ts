@@ -30,6 +30,9 @@ export interface ProductInfo {
   
   // Social
   likes: number;
+
+  // Highlights
+  highlights: string[];
   
   // Optional HTML body
   bodyHtml?: string | null;

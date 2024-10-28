@@ -193,6 +193,22 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
                     }
                 });
 
+                // Extract product highlights safely
+                const highlightsSection = document.querySelector("#details > div.css-h2sczi.eanm77i0");
+                        
+                if (!highlightsSection) {
+                    console.log('Highlights section not found');
+                    return [];
+                }
+
+                const highlights: ProductInfo['highlights'] = [];
+                highlightsSection.querySelectorAll('span').forEach(span => {
+                    const text = span.textContent?.trim();
+                    if (text && text.length > 0) {
+                        highlights.push(text);
+                    }
+                });
+
                 // If no images were found, include the HTML body
                 const bodyHtml = images.length === 0 ? document.body.innerHTML : null;
 
@@ -216,6 +232,7 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
                     category: product.attributes?.nthLevelCategory || '',
                     isOutOfStock: product.attributes?.isOutOfStock || false,
                     description: product.productInfo?.productDescription || '',
+                    highlights: highlights || [],
                     bodyHtml // Will be null if images were found
                 };
             });
