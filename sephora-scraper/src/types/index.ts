@@ -34,8 +34,14 @@ export interface ProductInfo {
   // Highlights
   highlights: string[];
 
+  // Ingredients
+  ingredients: string;
+
   // Description
   description: string;
+
+  // How to use
+  howToUse: string;
   
   // Optional HTML body
   bodyHtml?: string | null;

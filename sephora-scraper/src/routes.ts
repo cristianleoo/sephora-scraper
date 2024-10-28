@@ -221,6 +221,14 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
                 // Get all text content from the section
                 const description = descriptionSection.textContent?.trim() || '';
 
+                // Get ingredients
+                const ingredientsSelection = document.querySelector("#ingredients");
+                const ingredients = ingredientsSelection?.textContent?.trim() || '';
+
+                // Get How to use section
+                const howToUseSection = document.querySelector("#howtouse > div > div");
+                const howToUse = howToUseSection?.textContent?.trim() || '';
+
                 // If no images were found, include the HTML body
                 const bodyHtml = images.length === 0 ? document.body.innerHTML : null;
 
@@ -245,6 +253,8 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
                     isOutOfStock: product.attributes?.isOutOfStock || false,
                     description: description,
                     highlights: highlights || [],
+                    ingredients: ingredients,
+                    howToUse: howToUse,
                     bodyHtml // Will be null if images were found
                 };
             });
