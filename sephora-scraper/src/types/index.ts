@@ -33,6 +33,9 @@ export interface ProductInfo {
 
   // Highlights
   highlights: string[];
+
+  // Description
+  description: string;
   
   // Optional HTML body
   bodyHtml?: string | null;

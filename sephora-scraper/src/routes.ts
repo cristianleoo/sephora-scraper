@@ -173,6 +173,8 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
             // Extract product data using digitalData
             const productData = await page.evaluate(() => {
                 const product = window.digitalData.product[0];
+                if (!product) return null;
+                
                 const images: ProductImage[] = [];
 
                 // Process images from the DOM
@@ -209,6 +211,16 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
                     }
                 });
 
+                const descriptionSection = document.querySelector("#details > div.css-32uy52.eanm77i0 > div:nth-child(2) > div");
+                        
+                if (!descriptionSection) {
+                    console.log('Description section not found');
+                    return '';
+                }
+
+                // Get all text content from the section
+                const description = descriptionSection.textContent?.trim() || '';
+
                 // If no images were found, include the HTML body
                 const bodyHtml = images.length === 0 ? document.body.innerHTML : null;
 
@@ -231,15 +243,17 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
                     // Additional fields from digitalData
                     category: product.attributes?.nthLevelCategory || '',
                     isOutOfStock: product.attributes?.isOutOfStock || false,
-                    description: product.productInfo?.productDescription || '',
+                    description: description,
                     highlights: highlights || [],
                     bodyHtml // Will be null if images were found
                 };
             });
 
-            // Save to dataset
-            await Dataset.pushData(productData);
-            break; // Success, exit loop
+            // Add type check before pushing
+            if (productData && typeof productData === 'object') {
+                await Dataset.pushData(productData);
+                break; // Success, exit loop
+            }
 
         } catch (error) {
             if (retryCount >= maxRetries - 1) throw error;
