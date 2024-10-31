@@ -171,7 +171,7 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
             await page.waitForFunction(() => window.digitalData?.product?.[0], { timeout: 30000 });
 
             // Extract product data using digitalData
-            const productData = await page.evaluate(() => {
+            const productData = await page.evaluate((): ProductInfo | null => {
                 const product = window.digitalData.product[0];
                 if (!product) return null;
                 
@@ -195,12 +195,33 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
                     }
                 });
 
+                const reviewsCountSection = document.querySelector("body > div:nth-child(3) > main > section > div.css-1v7u6og.eanm77i0 > div:nth-child(1) > div.css-42r6cu.eanm77i0 > div > a.css-whkkt7.eanm77i0 > span.css-1j53ife");
+
+                if (!reviewsCountSection) {
+                    console.log('Reviews section not found');
+                    return null;
+                }
+
+                const reviewsCount = reviewsCountSection?.textContent?.trim() || '';
+
+                const reviewsAvgSection = document.querySelector("body > div:nth-child(3) > main > section > div.css-1v7u6og.eanm77i0 > div:nth-child(1) > div.css-42r6cu.eanm77i0 > div > a.css-whkkt7.eanm77i0 > span.css-1tbjoxk > span.css-j7llew");
+                const reviewsAvg = reviewsAvgSection?.getAttribute('style')?.match(/width:\s*([\d.]+)%/)?.[1];
+
+                const likesSection = document.querySelector("body > div:nth-child(3) > main > section > div.css-1v7u6og.eanm77i0 > div:nth-child(1) > div.css-42r6cu.eanm77i0 > div > div");
+
+                if (!likesSection) {
+                    console.log('Likes section not found');
+                    return null;
+                }
+
+                const likes = likesSection?.textContent?.trim() || '';
+
                 // Extract product highlights safely
                 const highlightsSection = document.querySelector("#details > div.css-h2sczi.eanm77i0");
                         
                 if (!highlightsSection) {
                     console.log('Highlights section not found');
-                    return [];
+                    return null;
                 }
 
                 const highlights: ProductInfo['highlights'] = [];
@@ -215,7 +236,7 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
                         
                 if (!descriptionSection) {
                     console.log('Description section not found');
-                    return '';
+                    return null;
                 }
 
                 // Get all text content from the section
@@ -223,14 +244,32 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
 
                 // Get ingredients
                 const ingredientsSelection = document.querySelector("#ingredients");
+
+                if (!ingredientsSelection) {
+                    console.log('Ingredients section not found');
+                    return null;
+                }
+
                 const ingredients = ingredientsSelection?.textContent?.trim() || '';
 
                 // Get How to use section
                 const howToUseSection = document.querySelector("#howtouse > div > div");
+
+                if (!howToUseSection) {
+                    console.log('How to use section not found');
+                    return null;
+                }
+
                 const howToUse = howToUseSection?.textContent?.trim() || '';
 
-                // If no images were found, include the HTML body
-                const bodyHtml = images.length === 0 ? document.body.innerHTML : null;
+                const sizeSection = document.querySelector("body > div:nth-child(3) > main > section > div.css-1v7u6og.eanm77i0 > div:nth-child(3) > div.css-1jp3h9y.eanm77i0 > div.css-k1zwuw.eanm77i0 > div.css-1ag3xrp.eanm77i0 > div");
+
+                if (!sizeSection) {
+                    console.log('Size section not found');
+                    return null;
+                }
+
+                const size = sizeSection?.textContent?.trim() || '';
 
                 return {
                     id: product.productInfo?.productId || '',
@@ -240,29 +279,27 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
                     url: window.location.href,
                     images,
                     price: {
-                        current: product.attributes?.price || '',
+                        current: Number(product.attributes?.price) || 0, // Convert to number
                         currency: 'USD'
                     },
-                    rating: {
-                        average: product.attributes?.rating || 0,
-                        count: product.attributes?.reviewCount || 0
+                    reviews: {
+                        average: reviewsAvg || 0,
+                        count: reviewsCount || 0
                     },
-                    likes: 0,
-                    // Additional fields from digitalData
+                    likes: likes || 0,
                     category: product.attributes?.nthLevelCategory || '',
                     isOutOfStock: product.attributes?.isOutOfStock || false,
-                    description: description,
+                    description: description || '',
                     highlights: highlights || [],
-                    ingredients: ingredients,
-                    howToUse: howToUse,
-                    bodyHtml // Will be null if images were found
-                };
+                    ingredients: ingredients || '',
+                    howToUse: howToUse || '',
+                    size: size || ''
+                } satisfies ProductInfo;
             });
 
-            // Add type check before pushing
-            if (productData && typeof productData === 'object') {
+            if (productData) {
                 await Dataset.pushData(productData);
-                break; // Success, exit loop
+                break;
             }
 
         } catch (error) {

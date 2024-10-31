@@ -17,19 +17,25 @@ export interface ProductInfo {
   
   // Pricing
   price: {
-    current: number;
-    original?: number;
+    current: string | number;
+    original?: string | number;
     currency: string;
   };
   
-  // Ratings
-  rating: {
-    average: number;
-    count: number;
+  // Reviews
+  reviews: {
+    average: string | number;
+    count: string | number;
   };
   
   // Social
-  likes: number;
+  likes: string | number;
+
+  // Category
+  category: string;
+
+  // Out of stock
+  isOutOfStock: boolean;
 
   // Highlights
   highlights: string[];
@@ -42,9 +48,9 @@ export interface ProductInfo {
 
   // How to use
   howToUse: string;
-  
-  // Optional HTML body
-  bodyHtml?: string | null;
+
+  // Size
+  size: string;
 }
 
 declare global {
@@ -60,8 +66,8 @@ declare global {
                 attributes?: {
                     skuId?: string;
                     price?: string;
-                    rating?: number;
-                    reviewCount?: number;
+                    rating?: string | number;
+                    reviewCount?: string | number;
                     nthLevelCategory?: string;
                     isOutOfStock?: boolean;
                 };
