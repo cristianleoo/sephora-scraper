@@ -18,7 +18,6 @@ export interface ProductInfo {
   // Pricing
   price: {
     current: string | number;
-    original?: string | number;
     currency: string;
   };
   

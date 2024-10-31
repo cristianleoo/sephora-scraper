@@ -218,6 +218,8 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
 
                 const likes = likesSection?.textContent?.trim() || '';
 
+                const price = document.querySelector("body > div:nth-child(3) > main > section > div.css-1v7u6og.eanm77i0 > div:nth-child(1) > div.css-1tzthcm.eanm77i0 > p > span > span.css-18jtttk > b")?.textContent?.trim() || '';
+
                 // Extract product highlights safely
                 const highlightsSection = document.querySelector("#details > div.css-h2sczi.eanm77i0");
                         
@@ -281,7 +283,7 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
                     url: window.location.href,
                     images,
                     price: {
-                        current: Number(product.attributes?.price) || 0, // Convert to number
+                        current: price || 0, // Convert to number
                         currency: 'USD'
                     },
                     reviews: {
