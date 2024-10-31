@@ -195,6 +195,8 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
                     }
                 });
 
+                const brandName = document.querySelector("body > div:nth-child(3) > main > section > div.css-1v7u6og.eanm77i0 > div:nth-child(1) > h1 > a")?.textContent?.trim() || '';
+
                 const reviewsCountSection = document.querySelector("body > div:nth-child(3) > main > section > div.css-1v7u6og.eanm77i0 > div:nth-child(1) > div.css-42r6cu.eanm77i0 > div > a.css-whkkt7.eanm77i0 > span.css-1j53ife");
 
                 if (!reviewsCountSection) {
@@ -275,7 +277,7 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
                     id: product.productInfo?.productId || '',
                     skuId: product.attributes?.skuId || '',
                     name: product.productInfo?.productName || '',
-                    brand: product.productInfo?.brandName || '',
+                    brand: brandName || '',
                     url: window.location.href,
                     images,
                     price: {
@@ -298,7 +300,14 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
             });
 
             if (productData) {
-                await Dataset.pushData(productData);
+                const brandName = productData.brand.toLowerCase().replace(/[^a-z0-9]/g, '-');
+                const datasetName = `${brandName}`;
+                const dataset = await Dataset.open(datasetName);
+                
+                await dataset.pushData({
+                    ...productData,
+                    savedAt: new Date().toISOString()
+                });
                 break;
             }
 
