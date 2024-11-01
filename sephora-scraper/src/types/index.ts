@@ -7,6 +7,7 @@ export interface ProductImage {
 export interface ProductInfo {
   // Basic info
   id: string;
+//   productId: string;
   skuId: string;
   name: string;
   brand: string;

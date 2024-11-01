@@ -1,8 +1,8 @@
 import { createPlaywrightRouter, Dataset } from 'crawlee';
 import { ProductInfo, ProductImage } from './types/index.js';
 
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 5000; // 5 seconds
+// Brands to skip UPPERCASE
+const BRANDS_TO_SKIP: string[] = ['AAVRANI'];
 
 export const router = createPlaywrightRouter();
 
@@ -48,38 +48,37 @@ router.addHandler('detail', async ({ request, page, log, pushData }) => {
 router.addHandler('initial', async ({ page, enqueueLinks, log }) => {
     log.info('Getting brand links...');
     
-    // Wait for brand links to load
     await page.waitForSelector('a[data-comp="BrandName "]', { timeout: 30000 });
     
-    // Get all brand links
     const brandLinks = await page.$$('a[data-comp="BrandName "]');
     log.info(`Found ${brandLinks.length} brands`);
     
     if (brandLinks.length > 0) {
-        // Get first brand's info
-        const firstBrand = brandLinks[0];
-        const href = await firstBrand.getAttribute('href');
-        const name = await firstBrand.textContent();
-        
-        // Store remaining brand elements for later
+        // Get first non-skipped brand
         const remainingBrands = [];
-        for (let i = 1; i < brandLinks.length; i++) {
-            const brand = brandLinks[i];
-            const brandHref = await brand.getAttribute('href');
-            const brandName = await brand.textContent();
-            remainingBrands.push({ href: brandHref, name: brandName });
+        for (const brand of brandLinks) {
+            const name = await brand.textContent();
+            const href = await brand.getAttribute('href');
+            
+            if (!BRANDS_TO_SKIP.includes(name?.trim().toUpperCase() || '')) {
+                remainingBrands.push({ href, name });
+            } else {
+                log.info(`Skipping brand: ${name}`);
+            }
         }
         
-        // Enqueue first brand
-        await enqueueLinks({
-            urls: [href!], // Add non-null assertion since href is string | null
-            label: 'BRAND',
-            userData: { 
-                brandName: name,
-                remainingBrands: remainingBrands,
-                brandIndex: 0
-            }
-        });
+        if (remainingBrands.length > 0) {
+            const firstBrand = remainingBrands.shift()!;
+            await enqueueLinks({
+                urls: [firstBrand.href!],
+                label: 'BRAND',
+                userData: { 
+                    brandName: firstBrand.name,
+                    remainingBrands,
+                    brandIndex: 0
+                }
+            });
+        }
     }
 });
 
@@ -126,6 +125,12 @@ router.addHandler('BRAND', async ({ request, page, enqueueLinks, log }) => {
     }
 });
 
+// Function to extract product ID from URL
+function getProductId(url: string): string | null {
+    const match = url.match(/product\/([^?]+)/);
+    return match ? match[1] : null;
+}
+
 // Handler for product pages
 router.addHandler('PRODUCT', async ({ request, page, log }) => {
     const maxRetries = 3;
@@ -135,9 +140,15 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
         try {
             log.info(`Scraping product at ${request.url}`);
 
+            // Extract product ID from URL
+            const productId = getProductId(request.url);
+            if (!productId) {
+                log.error('Product ID not found in URL');
+                break;
+            }
+
             // Take screenshot first
             const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-            const productId = request.url.split('/').pop();
             // await page.screenshot({
             //     path: `screenshots/${productId}-${timestamp}.png`,
             //     fullPage: true
@@ -171,8 +182,9 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
             await page.waitForFunction(() => window.digitalData?.product?.[0], { timeout: 30000 });
 
             // Extract product data using digitalData
-            const productData = await page.evaluate((): ProductInfo | null => {
+            const productData = await page.evaluate(( productId ): ProductInfo | null => {
                 const product = window.digitalData.product[0];
+                
                 if (!product) return null;
                 
                 const images: ProductImage[] = [];
@@ -275,8 +287,10 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
 
                 const size = sizeSection?.textContent?.trim() || '';
 
+                console.log("productId", productId);
+
                 return {
-                    id: product.productInfo?.productId || '',
+                    id: productId ?? '',
                     skuId: product.attributes?.skuId || '',
                     name: product.productInfo?.productName || '',
                     brand: brandName || '',
@@ -299,11 +313,13 @@ router.addHandler('PRODUCT', async ({ request, page, log }) => {
                     howToUse: howToUse || '',
                     size: size || ''
                 } satisfies ProductInfo;
-            });
+            }, productId);
 
             if (productData) {
                 const brandName = productData.brand.toLowerCase().replace(/[^a-z0-9]/g, '-');
                 const datasetName = `${brandName}`;
+                // process.env.INDEX = productData.id;
+                
                 const dataset = await Dataset.open(datasetName);
                 
                 await dataset.pushData({
